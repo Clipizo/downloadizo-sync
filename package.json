@@ -1,0 +1,12 @@
+{
+  "name": "downloadizo-sync",
+  "version": "1.0.0",
+  "description": "Downloadizo shared-queue sync hub (Hostinger Node.js)",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.22.2"
+  }
+}

@@ -1,0 +1,4 @@
+node_modules/
+queue.json
+.sync_token
+*.log
