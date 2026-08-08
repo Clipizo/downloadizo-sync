@@ -30,12 +30,14 @@ app.get("/api/health", (req, res) => res.json({ status: "ok", items: load().leng
 app.get("/api/queue", auth, (req, res) => res.json(load()));
 
 app.post("/api/queue", auth, (req, res) => {
-  const { url, label, device } = req.body || {};
+  const { url, label, device, time_start, time_end } = req.body || {};
   if (!url || typeof url !== "string") return res.status(400).json({ error: "url required" });
   const item = {
     id: crypto.randomBytes(8).toString("hex"),
     url,
     label: label || "",
+    time_start: time_start || "",
+    time_end: time_end || "",
     addedBy: device || "unknown",
     addedAt: Date.now(),
     status: "queued",   // queued | downloading | done | error
