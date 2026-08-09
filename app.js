@@ -25,7 +25,22 @@ function auth(req, res, next) {
   next();
 }
 
-app.get("/api/health", (req, res) => res.json({ status: "ok", items: load().length }));
+app.get("/api/health", (req, res) => res.json({ status: "ok", items: load().length, transfer: transferAddr }));
+
+// ---- transfer address (phone registers its local server) ----
+let transferAddr = "";
+app.post("/api/transfer", auth, (req, res) => {
+  transferAddr = (req.body || {}).address || "";
+  res.json({ ok: true, address: transferAddr });
+});
+app.get("/api/transfer", (req, res) => {
+  if (!_checkToken(req)) return res.status(401).json({ error: "unauthorized" });
+  res.json({ address: transferAddr });
+});
+app.delete("/api/transfer", auth, (req, res) => {
+  transferAddr = "";
+  res.json({ ok: true });
+});
 
 app.get("/api/queue", auth, (req, res) => res.json(load()));
 
