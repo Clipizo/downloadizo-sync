@@ -33,8 +33,7 @@ app.post("/api/transfer", auth, (req, res) => {
   transferAddr = (req.body || {}).address || "";
   res.json({ ok: true, address: transferAddr });
 });
-app.get("/api/transfer", (req, res) => {
-  if (!_checkToken(req)) return res.status(401).json({ error: "unauthorized" });
+app.get("/api/transfer", auth, (req, res) => {
   res.json({ address: transferAddr });
 });
 app.delete("/api/transfer", auth, (req, res) => {
