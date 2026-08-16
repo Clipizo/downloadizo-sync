@@ -41,6 +41,25 @@ app.delete("/api/transfer", auth, (req, res) => {
   res.json({ ok: true });
 });
 
+// ---- shared browser cookies (PC exports -> phone uses, fixes YouTube 403s) ----
+// Body is a Netscape cookies.txt (text/plain so the global JSON parser skips it).
+const COOKIES_FILE = path.join(__dirname, "cookies.txt");
+app.get("/api/cookies", auth, (req, res) => {
+  try {
+    res.type("text/plain").send(fs.readFileSync(COOKIES_FILE, "utf-8"));
+  } catch (_) {
+    res.status(404).json({ error: "no cookies shared yet" });
+  }
+});
+app.post("/api/cookies", auth, express.text({ limit: "2mb", type: "text/plain" }), (req, res) => {
+  const body = typeof req.body === "string" ? req.body : "";
+  if (!body.includes(".youtube.com")) {
+    return res.status(400).json({ error: "not a YouTube cookies file" });
+  }
+  fs.writeFileSync(COOKIES_FILE, body);
+  res.json({ ok: true, bytes: body.length });
+});
+
 app.get("/api/queue", auth, (req, res) => res.json(load()));
 
 app.post("/api/queue", auth, (req, res) => {
