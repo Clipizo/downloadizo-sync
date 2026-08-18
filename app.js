@@ -1,4 +1,4 @@
-// Downloadizo sync hub — shared queue backend (Hostinger Node.js).
+﻿// Downloadizo sync hub â€” shared queue backend (Hostinger Node.js).
 // Stores a JSON list of links + status; both desktop and phone sync to it.
 const express = require("express");
 const fs = require("fs");
@@ -89,7 +89,7 @@ app.patch("/api/queue/:id", auth, (req, res) => {
   const q = load();
   const it = q.find((x) => x.id === req.params.id);
   if (!it) return res.status(404).json({ error: "not found" });
-  const allowed = ["status", "device", "progress", "filename", "error", "label"];
+  const allowed = ["status", "device", "progress", "filename", "error", "label", "url", "time_start", "time_end"];
   for (const k of allowed) if (k in (req.body || {})) it[k] = req.body[k];
   save(q);
   res.json(it);
