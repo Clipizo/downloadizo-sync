@@ -70,9 +70,9 @@ app.get("/api/pot", auth, (req, res) => {
   }
 });
 app.post("/api/pot", auth, (req, res) => {
-  const { token, expireAt } = req.body || {};
+  const { token, visitorData, expireAt } = req.body || {};
   if (!token) return res.status(400).json({ error: "token required" });
-  fs.writeFileSync(POT_FILE, JSON.stringify({ token, expireAt: expireAt || 0, at: Date.now() }));
+  fs.writeFileSync(POT_FILE, JSON.stringify({ token, visitorData: visitorData || "", expireAt: expireAt || 0, at: Date.now() }));
   res.json({ ok: true });
 });
 
