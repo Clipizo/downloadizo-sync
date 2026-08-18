@@ -60,6 +60,22 @@ app.post("/api/cookies", auth, express.text({ limit: "2mb", type: "text/plain" }
   res.json({ ok: true, bytes: body.length });
 });
 
+// ---- shared PO token (PC's bgutil server mints -> phone uses for GVS) ----
+const POT_FILE = path.join(__dirname, "pot.json");
+app.get("/api/pot", auth, (req, res) => {
+  try {
+    res.json(JSON.parse(fs.readFileSync(POT_FILE, "utf-8")));
+  } catch (_) {
+    res.status(404).json({ error: "no po token shared yet" });
+  }
+});
+app.post("/api/pot", auth, (req, res) => {
+  const { token, expireAt } = req.body || {};
+  if (!token) return res.status(400).json({ error: "token required" });
+  fs.writeFileSync(POT_FILE, JSON.stringify({ token, expireAt: expireAt || 0, at: Date.now() }));
+  res.json({ ok: true });
+});
+
 app.get("/api/queue", auth, (req, res) => res.json(load()));
 
 app.post("/api/queue", auth, (req, res) => {
