@@ -2,3 +2,8 @@ node_modules/
 queue.json
 .sync_token
 *.log
+cookies.txt
+pot.json
+.env
+.env.*
+Safe_to_delete/
