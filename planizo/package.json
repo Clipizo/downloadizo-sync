@@ -1,0 +1,16 @@
+{
+  "name": "planizo-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "server.js",
+  "imports": {
+    "#imapflow": "./vendor/imapflow.mjs"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "imapflow": "^2.4.0"
+  }
+}

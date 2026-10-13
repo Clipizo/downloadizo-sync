@@ -13,6 +13,10 @@ app.disable("x-powered-by");
 app.disable("etag");
 app.set("query parser", "simple");
 app.set("trust proxy", false);
+// Planizo (owner's private planner) is mounted before Downloadizo's hardening and sets its own headers.
+if (options.planizo !== false && fs.existsSync(path.join(__dirname, "planizo", "mount.cjs"))) {
+  app.use("/planizo", require("./planizo/mount.cjs"));
+}
 app.use(security.hardening);
 // Keep queue and credentials outside both the web root and disposable hosting builds.
 const dataDir = options.dataDir || process.env.SYNC_DATA_DIR || path.join(os.homedir(), ".local", "share", "downloadizo-sync");
