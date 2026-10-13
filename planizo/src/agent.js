@@ -827,14 +827,14 @@ function readJson(file, fallback) {
 }
 
 function writeJson(file, value) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
   const pending = file + ".tmp";
   const replacer = function (key, val) {
     const raw = this[key];
     if (raw instanceof Date) return pyDateStr(raw);
     return val;
   };
-  fs.writeFileSync(pending, JSON.stringify(value, replacer, 2), "utf-8");
+  fs.writeFileSync(pending, JSON.stringify(value, replacer, 2), { encoding: "utf-8", mode: 0o600 });
   fs.renameSync(pending, file);
 }
 

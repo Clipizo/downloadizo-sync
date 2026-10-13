@@ -317,9 +317,9 @@ export function register(deps) {
 
   function save(state) {
     const target = statePath();
-    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 });
     const temp = target + ".tmp";
-    fs.writeFileSync(temp, asciiOnly(JSON.stringify(state, null, 2)), "utf-8");
+    fs.writeFileSync(temp, asciiOnly(JSON.stringify(state, null, 2)), { encoding: "utf-8", mode: 0o600 });
     fs.renameSync(temp, target);
   }
 

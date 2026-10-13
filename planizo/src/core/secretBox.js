@@ -28,7 +28,7 @@ function masterKey() {
       return cachedKey;
     }
   } catch {}
-  fs.mkdirSync(path.dirname(keyFile), { recursive: true });
+  fs.mkdirSync(path.dirname(keyFile), { recursive: true, mode: 0o700 });
   const fresh = crypto.randomBytes(32);
   fs.writeFileSync(keyFile, fresh, { mode: 0o600 });
   try {

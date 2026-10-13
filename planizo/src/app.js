@@ -10,7 +10,7 @@ import { seedDemo } from "./seed.js";
 
 export async function startApp({ dataDir }) {
   const base = path.resolve(String(dataDir));
-  fs.mkdirSync(base, { recursive: true });
+  fs.mkdirSync(base, { recursive: true, mode: 0o700 });
   const dbPath = path.join(base, "calendizo.db");
   const fresh = !fs.existsSync(dbPath);
   const state = { db: new CalendizoDB(dbPath), userId: "", dataDir: base };

@@ -56,7 +56,7 @@ function lock(root) {
   const lockPath = path.join(root, ".backup.lock");
   for (let i = 0; i < 2; i += 1) {
     try {
-      fs.closeSync(fs.openSync(lockPath, "wx"));
+      fs.closeSync(fs.openSync(lockPath, "wx", 0o600));
       return lockPath;
     } catch (err) {
       if (err.code !== "EEXIST") throw err;

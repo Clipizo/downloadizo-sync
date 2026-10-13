@@ -101,10 +101,30 @@ function plain(res, status, text, extra = {}) {
   send(res, status, Buffer.from(text), "text/plain; charset=utf-8", { "Cache-Control": "no-store, private", ...extra });
 }
 
+function tightenTree(dir) {
+  let entries;
+  try {
+    fs.chmodSync(dir, 0o700);
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) tightenTree(full);
+    else if (entry.isFile()) {
+      try {
+        fs.chmodSync(full, 0o600);
+      } catch {}
+    }
+  }
+}
+
 function openData() {
   applyHostedMarker();
   const dataDir = resolveDataDir();
   fs.mkdirSync(dataDir, { recursive: true, mode: 0o700 });
+  if (process.platform !== "win32") tightenTree(dataDir);
   configureSecrets(dataDir);
   return { dataDir, gate: new AccessGate(dataDir) };
 }

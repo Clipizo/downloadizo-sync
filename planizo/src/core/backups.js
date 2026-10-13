@@ -77,7 +77,7 @@ function u64(value) {
 export class ZipWriter {
   constructor(file) {
     this.file = String(file);
-    this.fd = fs.openSync(this.file, "w");
+    this.fd = fs.openSync(this.file, "w", 0o600);
     this.offset = 0;
     this.entries = [];
   }
@@ -441,12 +441,12 @@ export class ZipReader {
     }
     const targetPath = path.normalize(path.join(target, arcname));
     const upper = path.dirname(targetPath);
-    if (upper && !fs.existsSync(upper)) fs.mkdirSync(upper, { recursive: true });
+    if (upper && !fs.existsSync(upper)) fs.mkdirSync(upper, { recursive: true, mode: 0o700 });
     if (entry.name.endsWith("/")) {
-      if (!isDir(targetPath)) fs.mkdirSync(targetPath);
+      if (!isDir(targetPath)) fs.mkdirSync(targetPath, { mode: 0o700 });
       return targetPath;
     }
-    fs.writeFileSync(targetPath, this.readEntry(entry));
+    fs.writeFileSync(targetPath, this.readEntry(entry), { mode: 0o600 });
     return targetPath;
   }
 
@@ -629,7 +629,7 @@ function pyStr(value) {
 
 export function backupsDir(dataDir) {
   const p = path.join(String(dataDir), "backups");
-  fs.mkdirSync(p, { recursive: true });
+  fs.mkdirSync(p, { recursive: true, mode: 0o700 });
   return p;
 }
 
@@ -757,7 +757,7 @@ export async function syncToCloud(archive, cloudDir, { retries = 3, delay = 5.0 
   const dest = String(cloudDir);
   for (let attempt = 0; attempt < retries; attempt += 1) {
     try {
-      fs.mkdirSync(dest, { recursive: true });
+      fs.mkdirSync(dest, { recursive: true, mode: 0o700 });
       const target = path.join(dest, path.basename(source));
       if (samePath(source, target)) return true;
       if (exists(target) && fs.statSync(target).size === fs.statSync(source).size) return true;
@@ -774,7 +774,7 @@ export async function syncAllBackupsToCloud(dataDir, cloudDir) {
   const backups = listBackups(dataDir);
   if (!truthy(cloudDir)) return [0, backups.length];
   try {
-    fs.mkdirSync(String(cloudDir), { recursive: true });
+    fs.mkdirSync(String(cloudDir), { recursive: true, mode: 0o700 });
   } catch {
     return [0, backups.length];
   }
@@ -804,7 +804,7 @@ function pendingSidecar(db) {
 }
 
 function installDb(sourceDb, db, hooks) {
-  fs.mkdirSync(path.dirname(db), { recursive: true });
+  fs.mkdirSync(path.dirname(db), { recursive: true, mode: 0o700 });
   const temp = `${db}.${process.pid}.restore.tmp`;
   fs.copyFileSync(sourceDb, temp);
   let closed = false;
@@ -865,7 +865,7 @@ export function restoreBackup(dataDir, dbPath, backupPath, hooks = {}) {
       if (pyGet(rootEntry, "targetMode") === "data_dir") {
         replaceDir(sourceFolder, targetFolder);
       } else {
-        fs.mkdirSync(targetFolder, { recursive: true });
+        fs.mkdirSync(targetFolder, { recursive: true, mode: 0o700 });
         fs.cpSync(sourceFolder, targetFolder, { recursive: true, force: true, preserveTimestamps: true });
       }
     }
@@ -876,7 +876,7 @@ export function restoreBackup(dataDir, dbPath, backupPath, hooks = {}) {
       if (!truthy(archivePath) || targetFile === null) continue;
       const sourceFile = path.resolve(temp, pyStr(archivePath));
       if (!exists(sourceFile)) continue;
-      fs.mkdirSync(path.dirname(targetFile), { recursive: true });
+      fs.mkdirSync(path.dirname(targetFile), { recursive: true, mode: 0o700 });
       copy2(sourceFile, targetFile);
     }
   });
@@ -1175,7 +1175,7 @@ function restoreLegacyBackup(base, db, archive, hooks = {}) {
 }
 
 export function replaceDir(source, target) {
-  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 });
   let old = null;
   if (exists(target)) {
     old = path.join(path.dirname(target), `${path.basename(target)}.restore-old`);

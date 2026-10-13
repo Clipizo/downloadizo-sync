@@ -335,9 +335,9 @@ export function readJson(file, fallback) {
 }
 
 export function writeJson(file, value) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
   const pending = file + ".tmp";
-  fs.writeFileSync(pending, JSON.stringify(value, null, 2), "utf-8");
+  fs.writeFileSync(pending, JSON.stringify(value, null, 2), { encoding: "utf-8", mode: 0o600 });
   fs.renameSync(pending, file);
 }
 
@@ -890,9 +890,9 @@ export function register(state) {
     }
     if (!data.length || data.length > 25 * 1024 * 1024) throw new ApiError(400, "The image is empty or larger than 25 MB.");
     const folder = path.join(dataDir(), "content-thumbnails");
-    fs.mkdirSync(folder, { recursive: true });
+    fs.mkdirSync(folder, { recursive: true, mode: 0o700 });
     const filename = uuidHex() + ext;
-    fs.writeFileSync(path.join(folder, filename), data);
+    fs.writeFileSync(path.join(folder, filename), data, { mode: 0o600 });
     return { file: filename };
   });
 
@@ -1079,7 +1079,7 @@ export function register(state) {
 
   const imagesDir = () => {
     const folder = path.join(dataDir(), "whiteboard", "images");
-    fs.mkdirSync(folder, { recursive: true });
+    fs.mkdirSync(folder, { recursive: true, mode: 0o700 });
     return folder;
   };
 
@@ -1100,7 +1100,7 @@ export function register(state) {
     if (!THUMB_EXTS.has(ext)) ext = ".png";
     const folder = imagesDir();
     const filename = uuidHex() + ext;
-    fs.writeFileSync(path.join(folder, filename), data);
+    fs.writeFileSync(path.join(folder, filename), data, { mode: 0o600 });
     const names = imageNames();
     if (!isDict(names)) throw new TypeError(`'${pyType(names)}' object does not support item assignment`);
     names[filename] = or(name, filename);

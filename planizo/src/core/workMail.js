@@ -91,9 +91,9 @@ export class WorkMailConfig {
   }
 
   write(data) {
-    fs.mkdirSync(path.dirname(this.path), { recursive: true });
+    fs.mkdirSync(path.dirname(this.path), { recursive: true, mode: 0o700 });
     const pending = this.path + ".tmp";
-    fs.writeFileSync(pending, writeJsonAscii(data), "utf-8");
+    fs.writeFileSync(pending, writeJsonAscii(data), { encoding: "utf-8", mode: 0o600 });
     fs.renameSync(pending, this.path);
   }
 

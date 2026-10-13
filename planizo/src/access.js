@@ -26,7 +26,7 @@ export class AccessGate {
   }
 
   save() {
-    fs.mkdirSync(path.dirname(this.file), { recursive: true });
+    fs.mkdirSync(path.dirname(this.file), { recursive: true, mode: 0o700 });
     const temp = this.file + ".tmp";
     fs.writeFileSync(temp, JSON.stringify(this.state, null, 2), { encoding: "utf-8", mode: 0o600 });
     fs.renameSync(temp, this.file);
