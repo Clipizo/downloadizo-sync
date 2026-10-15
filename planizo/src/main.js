@@ -3,8 +3,8 @@ import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { AccessGate } from "./access.js";
-import { dispatch, send } from "./http.js";
+import { AccessGate, deviceLabel } from "./access.js";
+import { ApiError, dispatch, route, send } from "./http.js";
 import { configureSecrets } from "./core/secretBox.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -139,6 +139,22 @@ export async function createPlanizo({ basePath = "" } = {}) {
   const secureCookie = process.env.CALENDIZO_INSECURE_COOKIE !== "1" && (hosted || process.env.CALENDIZO_PRIVATE === "1");
   const base = String(basePath).replace(/\/+$/, "");
   const home = base + "/";
+  const accessState = (ctx) => (requireAccess ? { enabled: true, devices: gate.devices(ctx.req) } : { enabled: false, devices: [] });
+  const needAccess = () => {
+    if (!requireAccess) throw new ApiError(404, "Not found.");
+  };
+  route("GET", "/api/access", accessState);
+  route("POST", "/api/access/sign-out", (ctx) => {
+    needAccess();
+    const id = String(ctx.b("id") || "");
+    if (!/^(others|[0-9a-f]{16})$/.test(id)) throw new ApiError(400, "Choose a device.");
+    gate.signOut(ctx.req, id);
+    return accessState(ctx);
+  });
+  route("POST", "/api/access/new-link", () => {
+    needAccess();
+    return { path: `${base}/k/${gate.replaceLinks("owner")}` };
+  });
 
   async function handle(req, res) {
     res.calendizoHeaders = SECURITY_HEADERS;
@@ -161,7 +177,7 @@ export async function createPlanizo({ basePath = "" } = {}) {
         if (linkMatch && method === "GET") {
           const ip = gate.clientIp(req);
           if (gate.tooManyFails(ip)) return plain(res, 429, "Too many attempts\n");
-          const session = gate.redeem(linkMatch[1]);
+          const session = gate.redeem(linkMatch[1], deviceLabel(req.headers["user-agent"]));
           if (!session) {
             gate.noteFail(ip);
             return plain(res, 404, "Not found\n");

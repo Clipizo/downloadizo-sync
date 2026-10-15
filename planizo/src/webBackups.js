@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { route, ApiError, Raw } from "./http.js";
@@ -9,6 +10,8 @@ export const FOLDERS = ["whiteboard", "daily-logs", "content-thumbnails"];
 export const FILES = ["routine_presets.json", "day_presets.json", "work-mail.json", "agent-chats.json", "deepseek-agent.json", "google.json"];
 export const KEEP = 60;
 export const LOCK_STALE_SECONDS = 600;
+export const LAUNCH_DELAY_MS = 2 * 60 * 1000;
+const SIGNATURE_FILE = ".last-backup-signature";
 export const NAME_RX = /^Backup_(\p{Nd}{4}-\p{Nd}{2}-\p{Nd}{2})_(\p{Nd}{2})-(\p{Nd}{2})-(\p{Nd}{2})_(.+)\.zip$/u;
 
 function isDir(p) {
@@ -52,6 +55,51 @@ function sources(base) {
   return out;
 }
 
+function inputSignature(base, db) {
+  const parts = [];
+  const add = (file) => {
+    try {
+      const st = fs.statSync(file);
+      if (st.isFile()) parts.push([path.relative(base, file).split(path.sep).join("/"), st.size, Math.trunc(st.mtimeMs)]);
+    } catch {}
+  };
+  const walk = (dir) => {
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.isFile()) add(full);
+    }
+  };
+  add(db);
+  add(db + "-wal");
+  for (const name of FOLDERS) walk(path.join(base, name));
+  for (const name of FILES) add(path.join(base, name));
+  parts.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+  return crypto.createHash("sha256").update(JSON.stringify(parts)).digest("hex");
+}
+
+function readSignature(root) {
+  try {
+    return fs.readFileSync(path.join(root, SIGNATURE_FILE), "utf-8").trim();
+  } catch {
+    return "";
+  }
+}
+
+function writeSignature(root, signature) {
+  try {
+    const file = path.join(root, SIGNATURE_FILE);
+    fs.writeFileSync(file + ".tmp", signature + "\n", { encoding: "utf-8", mode: 0o600 });
+    fs.renameSync(file + ".tmp", file);
+  } catch {}
+}
+
 function lock(root) {
   const lockPath = path.join(root, ".backup.lock");
   for (let i = 0; i < 2; i += 1) {
@@ -89,6 +137,8 @@ function createLocked(base, db, root, reason, minIntervalMinutes, keep, sql) {
     const cutoff = shift(now, { minutes: -minIntervalMinutes });
     if (core.listBackups(base).some((p) => wallDiffMs(new Date(fs.statSync(p).mtimeMs), cutoff) >= 0)) return null;
   }
+  const signature = inputSignature(base, db);
+  if (minIntervalMinutes > 0 && signature === readSignature(root)) return null;
   const archive = path.join(root, `Backup_${strftime(now, "%Y-%m-%d_%H-%M-%S")}_${core.safeSlug(reason)}.zip`);
   if (fs.existsSync(archive)) return archive;
   const tempArchive = path.join(root, `.${path.basename(archive)}.${process.pid}.tmp`);
@@ -147,6 +197,7 @@ function createLocked(base, db, root, reason, minIntervalMinutes, keep, sql) {
     unlinkMissingOk(tempArchive);
     throw err;
   }
+  writeSignature(root, signature);
   core.pruneBackups(root, keep);
   return archive;
 }
@@ -226,7 +277,7 @@ export function autoBackups(deps) {
     timer = setTimeout(tick, 3600 * 1000);
     if (timer.unref) timer.unref();
   };
-  timer = setTimeout(tick, 0);
+  timer = setTimeout(tick, LAUNCH_DELAY_MS);
   if (timer.unref) timer.unref();
   return {
     stop() {

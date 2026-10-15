@@ -87,6 +87,10 @@ test("with the cookie the app and its API work", async () => {
   assert.strictEqual(boot.status, 200);
   assert.ok((await boot.json()).today);
   assert.strictEqual((await authed("/planizo/iconizo/iconizo-sprite.svg")).status, 200);
+  const access = await (await authed("/planizo/api/access")).json();
+  assert.strictEqual(access.enabled, true);
+  assert.ok(access.devices.some((d) => d.current));
+  assert.strictEqual((await get("/planizo/api/access")).status, 404);
 });
 
 test("nothing outside planizo/public is served under /planizo", async () => {
