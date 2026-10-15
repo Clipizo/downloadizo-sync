@@ -354,7 +354,19 @@ export function register(deps) {
   }
 
   function ownerSetup() {
-    return process.env.CALENDIZO_DEV === "1" && !fromEnvironment();
+    return (process.env.CALENDIZO_DEV === "1" || process.env.CALENDIZO_HOSTED === "1") && !fromEnvironment();
+  }
+
+  function allowedOrigin(origin) {
+    const publicUrl = pyStrip(process.env.CALENDIZO_PUBLIC_URL ?? "").replace(/\/+$/, "");
+    return LOCAL_ORIGIN.test(origin) || (Boolean(publicUrl) && origin === publicUrl);
+  }
+
+  function appBaseOf(ctx) {
+    const raw = String(ctx.req.originalUrl || ctx.req.url || "");
+    const at = raw.indexOf("/api/google/callback");
+    const base = at > 0 ? raw.slice(0, at) : "";
+    return /^(\/[A-Za-z0-9_-]+)*$/.test(base) ? base : "";
   }
 
   function appCredentials(state) {
@@ -713,7 +725,7 @@ export function register(deps) {
   route("POST", "/api/google/connect", (ctx) => {
     const rawOrigin = ctx.b("origin");
     const origin = pyStr(truthy(rawOrigin) ? rawOrigin : "");
-    if (!LOCAL_ORIGIN.test(origin)) throw new ApiError(400, "Connect from the Planizo page on this PC.");
+    if (!allowedOrigin(origin)) throw new ApiError(400, "Open Planizo from its usual address to connect Google.");
     const [clientId, clientSecret] = appCredentials(load());
     if (!truthy(clientId) || !truthy(clientSecret)) throw new ApiError(400, "Google sign-in isn't set up yet.");
     const verifier = crypto.randomBytes(64).toString("base64url");
@@ -740,7 +752,7 @@ export function register(deps) {
     return { url: AUTH_URL + "?" + urlencode(query), redirectUri: redirect };
   });
 
-  async function backPage(ok, message) {
+  async function backPage(ok, message, base = "") {
     if (!ok) {
       await withStateLock(() => {
         const state = load();
@@ -748,7 +760,7 @@ export function register(deps) {
         save(state);
       });
     }
-    const target = "/#/calendar?google=" + (ok ? "connected" : "error");
+    const target = base + "/#/calendar?google=" + (ok ? "connected" : "error");
     const body =
       '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Planizo</title>' +
       `<meta http-equiv="refresh" content="${ok ? "0.4" : "5"};url=${htmlEscape(target)}">` +
@@ -759,13 +771,14 @@ export function register(deps) {
   }
 
   route("GET", "/api/google/callback", async (ctx) => {
+    const back = (ok, message) => backPage(ok, message, appBaseOf(ctx));
     const stateKey = ctx.q("state") || "";
     const entry = pending.has(stateKey) ? pending.get(stateKey) : null;
     pending.delete(stateKey);
     if (ctx.q("error")) {
-      return backPage(false, ctx.q("error") === "access_denied" ? "Google sign-in was cancelled." : `Google sign-in failed (${ctx.q("error")}).`);
+      return back(false, ctx.q("error") === "access_denied" ? "Google sign-in was cancelled." : `Google sign-in failed (${ctx.q("error")}).`);
     }
-    if (!entry) return backPage(false, "This sign-in link has expired. Please connect again.");
+    if (!entry) return back(false, "This sign-in link has expired. Please connect again.");
     const [clientId, clientSecret] = appCredentials(load());
     let code;
     let payload;
@@ -779,10 +792,10 @@ export function register(deps) {
         code_verifier: entry.verifier,
       });
     } catch (exc) {
-      if (exc instanceof GoogleError) return backPage(false, exc.message);
+      if (exc instanceof GoogleError) return back(false, exc.message);
       throw exc;
     }
-    if (code !== 200 || !truthy(g(payload, "refresh_token"))) return backPage(false, "Google sign-in failed: " + errorText(payload));
+    if (code !== 200 || !truthy(g(payload, "refresh_token"))) return back(false, "Google sign-in failed: " + errorText(payload));
     const accessValue = g(payload, "access_token");
     const expiresIn = g(payload, "expires_in");
     const token = {
@@ -808,7 +821,7 @@ export function register(deps) {
       save(state);
     });
     void syncQuietly();
-    return backPage(true, "Google Calendar is connected. Taking you back to Planizo…");
+    return back(true, "Google Calendar is connected. Taking you back to Planizo…");
   });
 
   route("GET", "/api/google/calendars", async () => {

@@ -51,6 +51,7 @@ export function applyHostedMarker() {
     const hosted = JSON.parse(fs.readFileSync(path.join(appRoot, "planizo-hosted.json"), "utf-8"));
     process.env.CALENDIZO_HOSTED = "1";
     if (hosted.timezone && !process.env.CALENDIZO_TZ) process.env.CALENDIZO_TZ = hosted.timezone;
+    if (hosted.publicUrl && !process.env.CALENDIZO_PUBLIC_URL) process.env.CALENDIZO_PUBLIC_URL = hosted.publicUrl;
   } catch {}
   if (process.env.CALENDIZO_TZ && process.env.TZ !== process.env.CALENDIZO_TZ) process.env.TZ = process.env.CALENDIZO_TZ;
 }
